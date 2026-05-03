@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🐛 Bug Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1e293b;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid #334155;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; color: #f8fafc; }
+    header span { font-size: 1.6rem; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+    /* STATS */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 1.1rem;
+      text-align: center;
+    }
+    .stat-card .num { font-size: 2rem; font-weight: 800; color: #7c3aed; }
+    .stat-card .label { font-size: 0.78rem; color: #94a3b8; margin-top: 0.25rem; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* CONTROLS */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+    select, input[type=text], textarea {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.9rem;
+    }
+    select:focus, input:focus, textarea:focus { outline: 2px solid #7c3aed; border-color: transparent; }
+
+    /* BUTTON */
+    .btn {
+      padding: 0.5rem 1.1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #7c3aed; color: #fff; }
+    .btn-success { background: #059669; color: #fff; }
+    .btn-danger  { background: #dc2626; color: #fff; font-size: 0.78rem; padding: 0.3rem 0.7rem; }
+
+    /* MODAL */
+    .modal-backdrop {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 12px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 500px;
+    }
+    .modal h2 { margin-bottom: 1.25rem; font-size: 1.15rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.82rem; color: #94a3b8; margin-bottom: 0.4rem; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; }
+    .form-group textarea { height: 80px; resize: vertical; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
+
+    /* TABLE */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th {
+      background: #1e293b;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #94a3b8;
+      border-bottom: 1px solid #334155;
+    }
+    td { padding: 0.85rem 1rem; border-bottom: 1px solid #1e293b; vertical-align: top; }
+    tr:hover td { background: #1e293b88; }
+
+    /* BADGES */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .sev-Critical  { background: #7f1d1d; color: #fca5a5; }
+    .sev-High      { background: #78350f; color: #fcd34d; }
+    .sev-Medium    { background: #1e3a5f; color: #93c5fd; }
+    .sev-Low       { background: #14532d; color: #86efac; }
+
+    .status-Open        { background: #1e3a5f; color: #93c5fd; }
+    .status-In-Progress { background: #713f12; color: #fde68a; }
+    .status-Resolved    { background: #14532d; color: #86efac; }
+    .status-Closed      { background: #1e293b; color: #94a3b8; }
+
+    .bug-title { font-weight: 600; color: #f1f5f9; }
+    .bug-desc  { font-size: 0.82rem; color: #94a3b8; margin-top: 0.25rem; }
+
+    #empty-state { text-align: center; padding: 3rem; color: #475569; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>🐛</span>
+  <h1>Bug Tracker</h1>
+</header>
+
+<div class="container">
+
+  <!-- Stats Row -->
+  <div class="stats" id="stats">
+    <div class="stat-card"><div class="num" id="stat-total">—</div><div class="label">Total</div></div>
+    <div class="stat-card"><div class="num" id="stat-open">—</div><div class="label">Open</div></div>
+    <div class="stat-card"><div class="num" id="stat-inprogress">—</div><div class="label">In Progress</div></div>
+    <div class="stat-card"><div class="num" id="stat-resolved">—</div><div class="label">Resolved</div></div>
+    <div class="stat-card"><div class="num" id="stat-critical">—</div><div class="label">Critical</div></div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn btn-primary" onclick="openModal()">+ New Bug</button>
+    <select id="filter-status" onchange="loadBugs()">
+      <option value="">All Statuses</option>
+      <option>Open</option>
+      <option>In Progress</option>
+      <option>Resolved</option>
+      <option>Closed</option>
+    </select>
+    <select id="filter-severity" onchange="loadBugs()">
+      <option value="">All Severities</option>
+      <option>Critical</option>
+      <option>High</option>
+      <option>Medium</option>
+      <option>Low</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Bug</th>
+          <th>Severity</th>
+          <th>Status</th>
+          <th>Assignee</th>
+          <th>Reported</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="bugs-tbody">
+        <tr><td colspan="7" id="empty-state">Loading bugs...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- New Bug Modal -->
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <h2>🐛 Log New Bug</h2>
+    <div class="form-group">
+      <label>Title *</label>
+      <input type="text" id="new-title" placeholder="Short description of the bug"/>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="new-desc" placeholder="Steps to reproduce, expected vs actual behaviour..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Severity</label>
+      <select id="new-severity">
+        <option>Low</option>
+        <option selected>Medium</option>
+        <option>High</option>
+        <option>Critical</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Assignee</label>
+      <input type="text" id="new-assignee" placeholder="Dev Team"/>
+    </div>
+    <div class="form-group">
+      <label>Reporter</label>
+      <input type="text" id="new-reporter" placeholder="QA - Bhoomi"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" style="background:#334155;color:#e2e8f0" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-success" onclick="submitBug()">Log Bug</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STATUS_CYCLE = ["Open", "In Progress", "Resolved", "Closed"];
+
+  async function loadStats() {
+    const r = await fetch("/api/stats");
+    const s = await r.json();
+    document.getElementById("stat-total").textContent     = s.total;
+    document.getElementById("stat-open").textContent      = s.open;
+    document.getElementById("stat-inprogress").textContent = s.in_progress;
+    document.getElementById("stat-resolved").textContent  = s.resolved;
+    document.getElementById("stat-critical").textContent  = s.critical;
+  }
+
+  async function loadBugs() {
+    const status   = document.getElementById("filter-status").value;
+    const severity = document.getElementById("filter-severity").value;
+    let url = `/api/bugs?status=${status}&severity=${severity}`;
+
+    const r    = await fetch(url);
+    const bugs = await r.json();
+    const tbody = document.getElementById("bugs-tbody");
+
+    if (bugs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" id="empty-state">No bugs found 🎉</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = bugs.map(b => {
+      const statusClass = "status-" + b.status.replace(" ", "-");
+      return `
+        <tr>
+          <td style="color:#475569;font-size:0.8rem">#${b.id}</td>
+          <td>
+            <div class="bug-title">${escHtml(b.title)}</div>
+            ${b.description ? `<div class="bug-desc">${escHtml(b.description.substring(0, 80))}${b.description.length > 80 ? '…' : ''}</div>` : ''}
+          </td>
+          <td><span class="badge sev-${b.severity}">${b.severity}</span></td>
+          <td>
+            <span class="badge ${statusClass}" style="cursor:pointer" 
+              title="Click to advance status"
+              onclick="advanceStatus(${b.id}, '${b.status}')">
+              ${b.status}
+            </span>
+          </td>
+          <td style="color:#cbd5e1">${escHtml(b.assignee || '—')}</td>
+          <td style="color:#64748b;font-size:0.8rem">${b.created_at}</td>
+          <td>
+            <button class="btn btn-danger" onclick="deleteBug(${b.id})">Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  async function advanceStatus(id, current) {
+    const idx  = STATUS_CYCLE.indexOf(current);
+    const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+    await fetch(`/api/bugs/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: next })
+    });
+    loadBugs(); loadStats();
+  }
+
+  async function deleteBug(id) {
+    if (!confirm("Delete this bug?")) return;
+    await fetch(`/api/bugs/${id}`, { method: "DELETE" });
+    loadBugs(); loadStats();
+  }
+
+  function openModal()  { document.getElementById("modal").classList.add("open"); }
+  function closeModal() { document.getElementById("modal").classList.remove("open"); }
+
+  async function submitBug() {
+    const title = document.getElementById("new-title").value.trim();
+    if (!title) { alert("Please enter a bug title."); return; }
+
+    await fetch("/api/bugs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        description: document.getElementById("new-desc").value,
+        severity:    document.getElementById("new-severity").value,
+        assignee:    document.getElementById("new-assignee").value || "Unassigned",
+        reporter:    document.getElementById("new-reporter").value || "Anonymous",
+      })
+    });
+
+    closeModal();
+    document.getElementById("new-title").value    = "";
+    document.getElementById("new-desc").value     = "";
+    document.getElementById("new-assignee").value = "";
+    document.getElementById("new-reporter").value = "";
+    loadBugs(); loadStats();
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  // Init
+  loadStats(); loadBugs();
+</script>
+</body>
+</html>
